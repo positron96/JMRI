@@ -13,10 +13,10 @@ public class MqttTurnoutManager extends jmri.managers.AbstractTurnoutManager {
     private final MqttAdapter mqttAdapter;
     private final String systemPrefix;
 
-    MqttTurnoutManager(MqttAdapter ma, String p) {
+    MqttTurnoutManager(MqttAdapter ma, String sysPrefix) {
         super();
         mqttAdapter = ma;
-        systemPrefix = p;        
+        systemPrefix = sysPrefix;        
     }
 
     @Override
@@ -27,13 +27,19 @@ public class MqttTurnoutManager extends jmri.managers.AbstractTurnoutManager {
     @Override
     public Turnout createNewTurnout(String systemName, String userName) {
         Turnout t;
-        int addr = Integer.parseInt(systemName.substring(2));
+        int addr = Integer.parseInt(systemName.substring( systemPrefix.length() ));
         t = new MqttTurnout(mqttAdapter, addr);
         t.setUserName(userName);
 
         return t;
     }
 
-    static volatile MqttTurnoutManager _instance = null;
+    @Override
+    public String getEntryToolTip() {
+        String entryToolTip = Bundle.getMessage("AddOutputEntryToolTip");
+        return entryToolTip;
+    }
+
+    
 }
 

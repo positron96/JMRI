@@ -16,21 +16,17 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
 
     private final MqttAdapter mqttAdapter;
     private final String mysubTopic;
-    private final int _number;   // turnout number
+    private final int address;   // turnout number
 
     private final String closedText = "CLOSED";
     private final String thrownText = "THROWN";
 
     MqttTurnout(MqttAdapter ma, int number) {
         super("MT" + number);
-        _number = number;
+        address = number;
         mqttAdapter = ma;
-        mysubTopic = "track/turnout/" + _number;
+        mysubTopic = "track/turnout/" + address;
         mqttAdapter.subscribe(mysubTopic, this);
-    }
-
-    public int getNumber() {
-        return _number;
     }
 
     // Turnouts do support inversion
@@ -62,7 +58,7 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
     @Override
     protected void turnoutPushbuttonLockout(boolean _pushButtonLockout) {
         if (LOG.isDebugEnabled()) {
-            LOG.debug("Send command to " + (_pushButtonLockout ? "Lock" : "Unlock") + " Pushbutton BT" + _number);
+            LOG.debug("Send command to " + (_pushButtonLockout ? "Lock" : "Unlock") + " Pushbutton BT" + address);
         }
     }
 
