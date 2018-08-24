@@ -25,6 +25,7 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
         jmri.InstanceManager.setSensorManager(getSensorManager());
 //        jmri.InstanceManager.setLightManager(getLightManager());
 //        jmri.InstanceManager.setReporterManager(getReporterManager());
+        jmri.InstanceManager.setThrottleManager(getThrottleManager() );
     }    
     
     @Override
@@ -83,6 +84,18 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
             sensorManager = new MqttSensorManager(mqttAdapter, getSystemPrefix());
         }
         return sensorManager;
+    }
+    
+    protected MqttThrottleManager throttleManager;
+    
+    public MqttThrottleManager getThrottleManager() {
+        if (getDisabled()) {
+            return null;
+        }
+        if (throttleManager == null) {
+            throttleManager = new MqttThrottleManager(this, mqttAdapter);
+        }
+        return throttleManager;
     }
 
     void setMqttAdapter(MqttAdapter ma) {
