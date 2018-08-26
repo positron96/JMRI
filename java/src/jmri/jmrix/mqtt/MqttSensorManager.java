@@ -1,6 +1,5 @@
 package jmri.jmrix.mqtt;
 
-import jmri.jmrix.dccpp.*;
 import javax.swing.JOptionPane;
 import jmri.JmriException;
 import jmri.Sensor;

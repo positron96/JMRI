@@ -15,18 +15,17 @@ import org.slf4j.LoggerFactory;
 public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
 
     private final MqttAdapter mqttAdapter;
-    private final String mysubTopic;
-    private final int address;   // turnout number
+    private final String topic;
+    
 
     private final String closedText = "CLOSED";
     private final String thrownText = "THROWN";
 
-    MqttTurnout(MqttAdapter ma, int number) {
-        super("MT" + number);
-        address = number;
+    MqttTurnout(MqttAdapter ma, String systemName, String hwAddr) {
+        super(systemName);
         mqttAdapter = ma;
-        mysubTopic = "track/turnout/" + address;
-        mqttAdapter.subscribe(mysubTopic, this);
+        topic = "turnout/" + hwAddr;
+        mqttAdapter.subscribe(topic, this);
     }
 
     // Turnouts do support inversion
@@ -57,19 +56,18 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
 
     @Override
     protected void turnoutPushbuttonLockout(boolean _pushButtonLockout) {
-        if (LOG.isDebugEnabled()) {
-            LOG.debug("Send command to " + (_pushButtonLockout ? "Lock" : "Unlock") + " Pushbutton BT" + address);
-        }
+        LOG.debug("Send command to {} to topic {}" , _pushButtonLockout ? "Lock" : "Unlock", topic );
+
     }
 
     private void sendMessage(String c) {
-        mqttAdapter.publish(mysubTopic, c.getBytes());
+        mqttAdapter.publish(topic, c.getBytes());
     }
 
     @Override
     public void notifyMqttMessage(String topic, String message) {
-        if (!topic.endsWith(mysubTopic)) {
-            LOG.error("Got a message whose topic (" + topic + ") wasn't for me (" + mysubTopic + ")");
+        if (!topic.endsWith(topic)) {
+            LOG.error("Got a message whose topic (" + topic + ") wasn't for me (" + topic + ")");
             return;
         }
         switch (message) {
