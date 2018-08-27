@@ -19,7 +19,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
 
     private final static String PROTOCOL = "tcp://";
     private final static String CLID = "JMRI";
-    private final static String BASETOPIC = "rail/";
+    private String BASETOPIC = "rail/";
 
     HashMap<String, ArrayList<MqttEventListener>> mqttEventListeners;
 
@@ -27,14 +27,18 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
 
     public MqttAdapter() {
         super(new MqttSystemConnectionMemo());
-        option2Name = "MQTTchannel";
-        options.put(option2Name, new Option("MQTT channel :", new String[]{BASETOPIC + "+"}));
+                
+        option2Name = "MQTTprefix";
+        options.put(option2Name, new Option("MQTT Prefix :", new String[]{"rail/", ""}));
         allowConnectionRecovery = true;
     }
 
     @Override
-    public void configure() {
+    public void configure() {        
         log.debug("Doing configure...");
+        
+        BASETOPIC = getOptionState(option2Name);
+                
         mqttEventListeners = new HashMap<>();
         getSystemConnectionMemo().setMqttAdapter(this);
         getSystemConnectionMemo().configureManagers();
@@ -43,6 +47,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
 
     @Override
     public void connect() throws IOException {
+     
         log.debug("Doing connect...");
         try {
             String clientID = CLID + "-" + this.getUserName();
