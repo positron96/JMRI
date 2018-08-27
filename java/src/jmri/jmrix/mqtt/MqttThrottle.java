@@ -204,10 +204,8 @@ public class MqttThrottle extends AbstractThrottle implements MqttEventListener 
      */
     @Override
     synchronized public void setSpeedSetting(float speed) {
-        if (log.isDebugEnabled()) {
-            log.debug("set Speed to: " + speed
-                    + " Current step mode is: " + this.speedStepMode);
-        }
+        log.debug("set Speed to: {},  Current step mode is: {}",  speed, this.speedStepMode);
+        System.out.println("set Speed to: {},  Current step mode is: {}"+speed+", "+this.speedStepMode);
         super.setSpeedSetting(speed);
         if (speed < 0) {
             /* we're sending an emergency stop to this locomotive only */
@@ -217,7 +215,7 @@ public class MqttThrottle extends AbstractThrottle implements MqttEventListener 
                 speed = (float) 1.0;
             }
 
-            sendMessage("speed", (""+(int)speed).getBytes() );
+            sendMessage("speed", (""+Math.round(speed*127)).getBytes() );
         }
     }
 
@@ -285,7 +283,7 @@ public class MqttThrottle extends AbstractThrottle implements MqttEventListener 
 
     @Override
     public LocoAddress getLocoAddress() {
-        return new MqttLocoAddress(address);
+        return new DccLocoAddress(address, address<128 ? LocoAddress.Protocol.DCC_SHORT : LocoAddress.Protocol.DCC_LONG);
     }
 
     synchronized protected void sendMessage(String topic, byte[] msg) {
@@ -302,10 +300,12 @@ public class MqttThrottle extends AbstractThrottle implements MqttEventListener 
     private final static Logger log = LoggerFactory.getLogger(MqttThrottle.class);
     
     
-    public static class MqttLocoAddress implements LocoAddress {
+    /*
+    public static class MqttLocoAddress extends DccLocoAddress {
         private final int addr;
 
         public MqttLocoAddress(int addr) {
+            super(addr, )
             this.addr = addr;
         }
 
@@ -319,5 +319,5 @@ public class MqttThrottle extends AbstractThrottle implements MqttEventListener 
             return addr<128 ? Protocol.DCC_SHORT : Protocol.DCC_LONG;
         }
         
-    }
+    }*/
 }

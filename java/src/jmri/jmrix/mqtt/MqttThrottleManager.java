@@ -47,9 +47,8 @@ public class MqttThrottleManager extends AbstractThrottleManager implements Thro
     @Override
     public void requestThrottleSetup(LocoAddress address, boolean control) {
         MqttThrottle throttle;
-        if (log.isDebugEnabled()) {
-            log.debug("Requesting Throttle: " + address);
-        }
+        log.debug("Requesting Throttle: {}", address);
+
         if (throttles.containsKey(address)) {
             notifyThrottleKnown(throttles.get(address), address);
         } else {

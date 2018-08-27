@@ -44,6 +44,12 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
         if (type.equals(jmri.TurnoutManager.class)) {
             return true;
         }
+        if (type.equals(jmri.ThrottleManager.class)) {
+            return true;
+        }
+        if (type.equals(jmri.SensorManager.class)) {
+            return true;
+        }
         return false; // nothing, by default
     }    
    
@@ -58,6 +64,12 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
         }
         if (T.equals(jmri.TurnoutManager.class)) {
             return (T) getTurnoutManager();
+        }
+        if (T.equals(jmri.SensorManager.class)) {
+            return (T) getSensorManager();
+        }
+        if (T.equals(jmri.ThrottleManager.class)) {
+            return (T) getThrottleManager();
         }
         return null; // nothing, by default
     }
