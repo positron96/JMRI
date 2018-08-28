@@ -105,9 +105,13 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
     }
 
     public void publish(String topic, byte[] payload) {
+        publish(topic, payload, true);
+    }
+    
+    public void publish(String topic, byte[] payload, boolean retained) {
         try {
             String fullTopic = BASETOPIC + topic;
-            mqttClient.publish(fullTopic, payload, 2, true);
+            mqttClient.publish(fullTopic, payload, 0, retained);
         } catch (MqttException ex) {
             log.error("Can't publish : ", ex);
         }
@@ -144,7 +148,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
             throw new Exception("No subscriber for MQTT topic " + topic);
         }
         mqttEventListeners.get(topic).forEach((mel) -> {
-            mel.notifyMqttMessage(topic, mm.toString());
+            mel.notifyMqttMessage(topic, new String( mm.getPayload() ) );
         });
     }
 
