@@ -18,14 +18,25 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
     private final String topic;
     
 
-    private final String closedText = "CLOSED";
-    private final String thrownText = "THROWN";
+    private static final String PAIR_CLOSED = "CLOSED";
+    private static final String PAIR_THROWN = "THROWN";
+    private final String closedText;
+    private final String thrownText;
+    private final boolean isPair;
 
     MqttTurnout(MqttAdapter ma, String systemName, String hwAddr) {
         super(systemName);
         mqttAdapter = ma;
-        topic = "turnout/" + hwAddr;
-        mqttAdapter.subscribe(topic, this);
+        topic = "acc/" + hwAddr.toUpperCase();
+        isPair = hwAddr.toUpperCase().startsWith("PAIR");
+        if (isPair) {
+            closedText = PAIR_CLOSED;
+            thrownText = PAIR_THROWN;
+        } else {
+            closedText = "0";
+            thrownText = "1";
+        }
+        //mqttAdapter.subscribe(topic, this);        
     }
 
     // Turnouts do support inversion
@@ -37,20 +48,20 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
     // Handle a request to change state by sending a formatted DCC packet
     @Override
     protected void forwardCommandChangeToLayout(int s) {
-        // sort out states
-        if ((s & Turnout.CLOSED) != 0) {
+        
+        if ((s & Turnout.CLOSED) != 0 && (s & Turnout.THROWN) != 0) {
             // first look for the double case, which we can't handle
-            if ((s & Turnout.THROWN) != 0) {
-                // this is the disaster case!
-                LOG.error("Cannot command both CLOSED and THROWN " + s);
-                return;
-            } else {
-                // send a CLOSED command
-                sendMessage(closedText);
-            }
-        } else {
+            // this is the disaster case!
+            LOG.error("Cannot command both CLOSED and THROWN " + s);
+            return;
+        }
+        if ((s & Turnout.CLOSED) != 0) {
+            // send a CLOSED command
+            sendMessage(_inverted ? thrownText : closedText);
+        } 
+        if( (s & Turnout.THROWN) != 0) {
             // send a THROWN command
-            sendMessage(thrownText);
+            sendMessage(_inverted ? closedText : thrownText);
         }
     }
 
@@ -66,15 +77,19 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
 
     @Override
     public void notifyMqttMessage(String topic, String message) {
-        if (!topic.endsWith(topic)) {
+        if (!this.topic.endsWith(topic)) {
             LOG.error("Got a message whose topic (" + topic + ") wasn't for me (" + topic + ")");
             return;
         }
         switch (message) {
-            case closedText:                
+            case "0":
+            case "OFF":
+            case PAIR_CLOSED:                
                 newKnownState(CLOSED);
                 break;
-            case thrownText:
+            case "1":
+            case "ON":
+            case PAIR_THROWN:
                 newKnownState(THROWN);
                 break;
             default:
