@@ -3,11 +3,13 @@ package jmri.jmrix.mqtt;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
+import org.eclipse.paho.client.mqttv3.MqttTopic;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,13 +145,20 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
     @Override
     public void messageArrived(String topic, MqttMessage mm) throws Exception {
         log.debug("Message reveiced, topic : {}", topic);
-        if (!mqttEventListeners.containsKey(topic)) {
+        
+        AtomicBoolean processed = new AtomicBoolean(false);
+        mqttEventListeners.entrySet().stream()
+                .filter( tt->MqttTopic.isMatched(tt.getKey(), topic) )
+                .flatMap(tt->tt.getValue().stream() )
+                .forEach( (list) -> {            
+                    list.notifyMqttMessage(topic, new String( mm.getPayload() ) );
+                    processed.set(true);
+                });
+        if (!processed.get() ) {
             log.error("No one subscribed to {}", topic);
             throw new Exception("No subscriber for MQTT topic " + topic);
         }
-        mqttEventListeners.get(topic).forEach((mel) -> {
-            mel.notifyMqttMessage(topic, new String( mm.getPayload() ) );
-        });
+        
     }
 
     @Override

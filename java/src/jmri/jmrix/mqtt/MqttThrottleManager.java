@@ -27,11 +27,11 @@ public class MqttThrottleManager extends AbstractThrottleManager implements Thro
     /**
      * Constructor.
      */
-    public MqttThrottleManager(MqttSystemConnectionMemo memo, MqttAdapter a) {
+    public MqttThrottleManager(MqttSystemConnectionMemo memo) {
         super(memo);
         // connect to the TrafficManager
         
-        mqttAdapter = a;
+        mqttAdapter = memo.getMqttAdapter();
         
         //tc = memo.getDCCppTrafficController();
 

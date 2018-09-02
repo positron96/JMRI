@@ -38,18 +38,12 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
      */
     @Override
     public boolean provides(Class<?> type) {
-        if (getDisabled()) {
-            return false;
-        }
-        if (type.equals(jmri.TurnoutManager.class)) {
-            return true;
-        }
-        if (type.equals(jmri.ThrottleManager.class)) {
-            return true;
-        }
-        if (type.equals(jmri.SensorManager.class)) {
-            return true;
-        }
+        if (getDisabled()) {  return false;   }
+        if (type.equals(jmri.TurnoutManager.class)) { return true;  }
+        if (type.equals(jmri.ThrottleManager.class)) { return true;   }
+        if (type.equals(jmri.SensorManager.class)) { return true;  }
+        if (type.equals(jmri.GlobalProgrammerManager.class)) { return true;  }
+        if (type.equals(jmri.AddressedProgrammerManager.class)) { return true;  }
         return false; // nothing, by default
     }    
    
@@ -59,9 +53,7 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
     @SuppressWarnings("unchecked")
     @Override
     public <T> T get(Class<?> T) {
-        if (getDisabled()) {
-            return null;
-        }
+        if (getDisabled()) {  return null;  }
         if (T.equals(jmri.TurnoutManager.class)) {
             return (T) getTurnoutManager();
         }
@@ -70,6 +62,12 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
         }
         if (T.equals(jmri.ThrottleManager.class)) {
             return (T) getThrottleManager();
+        }
+        if (T.equals(jmri.GlobalProgrammerManager.class)) {
+            return (T) getProgrammerManager();
+        }
+        if (T.equals(jmri.AddressedProgrammerManager.class)) {
+            return (T) getProgrammerManager();
         }
         return null; // nothing, by default
     }
@@ -105,13 +103,26 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
             return null;
         }
         if (throttleManager == null) {
-            throttleManager = new MqttThrottleManager(this, mqttAdapter);
+            throttleManager = new MqttThrottleManager(this);
         }
         return throttleManager;
+    }
+   
+    private MqttProgrammerManager progManager;
+    
+    public MqttProgrammerManager getProgrammerManager() {
+        if(progManager==null) {
+            progManager = new MqttProgrammerManager( new MqttProgrammer(mqttAdapter), this);
+        }
+        return progManager;
     }
 
     void setMqttAdapter(MqttAdapter ma) {
         mqttAdapter = ma;
+    }
+    
+    MqttAdapter getMqttAdapter() {
+        return mqttAdapter;
     }
 
     
