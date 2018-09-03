@@ -1014,10 +1014,10 @@
             <version>0.1.19</version>
         </dependency>
         <dependency>
-	         <groupId>org.eclipse.paho</groupId>
-	         <artifactId>mqtt-client</artifactId>
-	         <version>0.4.0</version>
-	    </dependency>
+	<groupId>org.eclipse.paho</groupId>
+             <artifactId>org.eclipse.paho.client.mqttv3</artifactId>
+             <version>1.2.0</version>
+	</dependency>
         <dependency>
              <groupId>com.alexandriasoftware.swing</groupId>
              <artifactId>jsplitbutton</artifactId>
