@@ -72,6 +72,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
         }
         try {
             String fullTopic = BASETOPIC + topic;
+            log.debug("subscribing to {}", fullTopic);
             if (mqttEventListeners.containsKey(fullTopic)) {
                 if (!mqttEventListeners.get(fullTopic).contains(mel)) {
                     mqttEventListeners.get(fullTopic).add(mel);
@@ -88,10 +89,12 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
     }
 
     public void unsubscribe(String topic, MqttEventListener mel) {
+        log.debug("unsubscribing from {}", topic);
         String fullTopic = BASETOPIC + topic;
         mqttEventListeners.get(fullTopic).remove(mel);
         if (mqttEventListeners.get(fullTopic).isEmpty()) {
             try {
+                log.debug("really unsubscribing from {}", fullTopic);
                 mqttClient.unsubscribe(fullTopic);
                 mqttEventListeners.remove(fullTopic);
             } catch (MqttException ex) {
@@ -100,7 +103,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
         }
     }
 
-    public void unsubscribeall(MqttEventListener mel) {
+    public void unsubscribeAll(MqttEventListener mel) {
         mqttEventListeners.keySet().forEach((t) -> {
             unsubscribe(t, mel);
         });
@@ -120,7 +123,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
     }
 
     public MqttClient getMQttClient() {
-        return (mqttClient);
+        return mqttClient;
     }
 
     @Override
@@ -144,7 +147,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
 
     @Override
     public void messageArrived(String topic, MqttMessage mm) throws Exception {
-        log.debug("Message reveiced, topic : {}", topic);
+        log.debug("Message received, topic : {}", topic);
         
         AtomicBoolean processed = new AtomicBoolean(false);
         mqttEventListeners.entrySet().stream()
@@ -156,7 +159,6 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
                 });
         if (!processed.get() ) {
             log.error("No one subscribed to {}", topic);
-            throw new Exception("No subscriber for MQTT topic " + topic);
         }
         
     }

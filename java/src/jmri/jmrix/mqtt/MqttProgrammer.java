@@ -7,8 +7,12 @@ package jmri.jmrix.mqtt;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import javax.swing.SwingUtilities;
 import jmri.AddressedProgrammer;
 import jmri.ProgListener;
 import jmri.ProgrammerException;
@@ -36,6 +40,8 @@ public class MqttProgrammer extends AbstractProgrammer
     private final String listenTopic;
     private final MqttAdapter mqtt;
     
+    private final Executor notifier = Executors.newSingleThreadExecutor();
+    
     private final Pattern listenTopicRegex = Pattern.compile("(?:.+/)??loco/(?<addr>\\d+)/CV/(?<cv>\\d+)");
     
     public MqttProgrammer(MqttAdapter mqtt) {
@@ -62,11 +68,16 @@ public class MqttProgrammer extends AbstractProgrammer
     }
 
     @Override
-    protected synchronized void timeout() {
-        log.debug("TimeOut called");
+    protected void timeout() {
         if(waiting) {
-            if(ll!=null) ll.programmingOpReply(0, jmri.ProgListener.FailedTimeout);            
+            log.debug("TimeOut called");
             waiting = false;
+            if(ll!=null) {
+                notifier.execute( ()-> ll.programmingOpReply(0, jmri.ProgListener.FailedTimeout) );
+            }
+            
+        } else {
+            log.debug("TimeOut called, but not waiting");
         }
     }
     
@@ -76,21 +87,27 @@ public class MqttProgrammer extends AbstractProgrammer
     }
     
     private void sendGetReq(int cv) {
-        waiting = true;
-        cCV = cv;
-        cVal = -1;
-        mqtt.publish(pubTopic(cCV), "".getBytes(), false);        
+        synchronized (this) {
+            waiting = true;
+            cCV = cv;
+            cVal = -1;
+        }
+        mqtt.publish(pubTopic(cCV), "".getBytes(), false);    
+        restartTimer(25000);
     }
     
     private void sendSetReq(int cv, int val) {
-        waiting = true;
-        cCV = cv;
-        cVal = val;
+        synchronized (this) {
+            waiting = true;
+            cCV = cv;
+            cVal = val;
+        }
         mqtt.publish(pubTopic(cCV), Integer.toString(val).getBytes(), false);
+        restartTimer(25000);
     }
 
     @Override
-    public synchronized void writeCV(int cv, int val, ProgListener p) throws ProgrammerException {
+    public void writeCV(int cv, int val, ProgListener p) throws ProgrammerException {
         log.debug("writeCV({}, {})", cv, val);
         
         if(waiting) {
@@ -98,12 +115,11 @@ public class MqttProgrammer extends AbstractProgrammer
             return;
         }
         ll = p;
-        sendSetReq(cv, val);
-        restartTimer(5000);
+        sendSetReq(cv, val);        
     }
 
     @Override
-    public synchronized void readCV(int cv, ProgListener p) throws ProgrammerException {
+    public void readCV(int cv, ProgListener p) throws ProgrammerException {
         log.debug("readCV({})", cv);
         
         if(waiting) {
@@ -112,11 +128,10 @@ public class MqttProgrammer extends AbstractProgrammer
         }
         ll = p;
         sendGetReq(cv);
-        restartTimer(5000);
     }
 
     @Override
-    public synchronized void confirmCV(String cv, int val, ProgListener p) throws ProgrammerException {
+    public void confirmCV(String cv, int val, ProgListener p) throws ProgrammerException {
         log.debug("confirmCV({}, {})", cv, val);
         
         readCV(Integer.parseInt(cv) , p);
@@ -134,9 +149,9 @@ public class MqttProgrammer extends AbstractProgrammer
     
 
     @Override
-    public synchronized void notifyMqttMessage(String topic, String message) {
-        if(!waiting) {
-            return;
+    public void notifyMqttMessage(String topic, String message) {
+        synchronized (this) {
+            if(!waiting) { return;  }
         }
         
         Matcher matcher = listenTopicRegex.matcher(topic);
@@ -146,16 +161,21 @@ public class MqttProgrammer extends AbstractProgrammer
                 log.info("Wrong address {}, expected {}!", a, addr);
                 return;
             }
-            int cv = Integer.parseInt( matcher.group("cv") );
-            if(cv!=cCV) {
-                log.info("Wrong CV {}, expected {}!", cv, cCV);
-                return;
+            synchronized (this) {
+                int cv = Integer.parseInt( matcher.group("cv") );
+                if(cv!=cCV) {
+                    log.info("Wrong CV {}, expected {}!", cv, cCV);
+                    return;
+                }
+                int val = Integer.parseInt(message);
+                log.info("Programmer processing CV {}, value {}", cv, val);
+                waiting = false;
+                stopTimer();
+                if(ll!=null) {
+                    notifier.execute( ()->ll.programmingOpReply(val, ProgListener.OK) );
+                }
             }
-            int val = Integer.parseInt(message);
-            waiting = false;
-            if(ll!=null) {
-                ll.programmingOpReply(val, ProgListener.OK);
-            }
+            
         }
         
         
