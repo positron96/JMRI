@@ -7,55 +7,35 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * Extend jmri.AbstractSensor for DCC++ layouts.
+ * Extend jmri.AbstractSensor for MQTT protocol.
+ * 
+ * <p>
+ * Subscribes to topic 
  *
  * @author Paul Bender Copyright (C) 2003-2010
  * @author Mark Underwood Copyright (C) 2015
+ * @author positron, 2018
  *
  * Based on XNetSensor
  */
 public class MqttSensor extends AbstractSensor implements MqttEventListener {
-
-    private String devAddr;
-    private int channel;
-
-    //private int nibble;      /* Is this sensor in the upper or lower 
-    //nibble for the feedback encoder */
-
     
-    private String listenTopic, cmdTopic;
+    private final String listenTopic;    
+    private final String cmdTopic;
 
     protected MqttAdapter mqttAdapter = null;
     
-    public MqttSensor(MqttAdapter controller, String systemName) {
+    public MqttSensor(MqttAdapter controller, String systemName, String hwAddr) {
         super(systemName);
         mqttAdapter = controller;
-        init();
-    }
-
-    
-    /**
-     * Common initialization for both constructors
-     */
-    private void init() {
-        // store address
-        String id = super.getSystemName();
-        //prefix = jmri.InstanceManager.getDefault(jmri.jmrix.dccpp.DCCppSensorManager.class).getSystemPrefix();
-        String regex = "\\D*(\\d+)_(\\d+)";
-        Matcher m = Pattern.compile(regex).matcher(id);
-        if (m.matches()) {
-            devAddr = m.group(1);
-            channel = Integer.parseInt(m.group(2));
-        }
-
-        log.debug("New sensor id {} parsed into address {} channel {}", id, devAddr, channel);
         
-        listenTopic = devAddr+"/"+channel;
-        cmdTopic = listenTopic+"/request";
+        listenTopic = "acc/"+hwAddr;
+        cmdTopic = listenTopic+"/get";
         mqttAdapter.subscribe(listenTopic, this);
         
     }
 
+    
     /** {@inheritDoc }  */
     @Override
     public void requestUpdateFromLayout() {
@@ -85,6 +65,7 @@ public class MqttSensor extends AbstractSensor implements MqttEventListener {
 
     @Override
     public void dispose() {
+        mqttAdapter.unsubscribe(listenTopic, this);
         super.dispose();
     }
 

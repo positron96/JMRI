@@ -1,5 +1,8 @@
 package jmri.jmrix.mqtt;
 
+import java.util.function.Function;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import javax.swing.JOptionPane;
 import jmri.JmriException;
 import jmri.Sensor;
@@ -9,15 +12,12 @@ import org.slf4j.LoggerFactory;
 /**
  * Implement Sensor Manager for DCC++ systems.
  * <p>
- * System names are "DxppSnnn", where Dx is the system prefix and nnn is the sensor number without padding.
- *
- * @author Paul Bender Copyright (C) 2003-2010
- * @author Mark Underwood Copyright (C) 2015
+ * Based on {@link jmri.jmrix.dccpp.DCCppSensorManager}.
  */
 public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
 
     private final MqttAdapter mqttAdapter;
-    protected String prefix = null;
+    protected String sysPrefix = null;
 
     /**
      * Create an new DCC++ SensorManager.
@@ -29,12 +29,12 @@ public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
     public MqttSensorManager(MqttAdapter ma, String sysPrefix) {
         super();
         mqttAdapter = ma;
-        prefix = sysPrefix;        
+        this.sysPrefix = sysPrefix;        
     }
 
     @Override
     public String getSystemPrefix() {
-        return prefix;
+        return sysPrefix;
     }
 
     // to free resources when no longer used
@@ -45,7 +45,9 @@ public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
 
     @Override
     public Sensor createNewSensor(String systemName, String userName) throws IllegalArgumentException {
-        Sensor s = new MqttSensor(mqttAdapter, systemName);
+        String prefix = getSystemPrefix() + typeLetter();
+        Sensor s = new MqttSensor(mqttAdapter, systemName, 
+                systemName.substring(prefix.length()));
         s.setUserName(userName);
         return s;
     }
@@ -57,52 +59,12 @@ public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
 
     
     @Override
-    synchronized public String createSystemName(String hwAddr, String sysPrefix) throws JmriException {
+    synchronized public String createSystemName(String hwAddr, String sysPrefix) {
         if (!sysPrefix.equals( getSystemPrefix() )) {
             log.warn("Suddenly creating sensor with different system prefix: {} vs {}", sysPrefix, getSystemPrefix() );
         }
-        int encoderAddress = 0;
-        int channel = 0;
-
-        if (hwAddr.contains(":")) {
-            // Address format passed is in the form of encoderAddress:input or T:turnout address
-            int seperator = hwAddr.indexOf(":");
-            try {
-                encoderAddress = Integer.valueOf(hwAddr.substring(0, seperator)).intValue();
-                channel = Integer.valueOf(hwAddr.substring(seperator + 1)).intValue();
-            } catch (NumberFormatException ex) {
-                log.error("Unable to convert {} into the cab and input format of nn:xx", hwAddr);
-                JOptionPane.showMessageDialog(null, Bundle.getMessage("WarningAddressAsNumber"),
-                        Bundle.getMessage("WarningTitle"), JOptionPane.ERROR_MESSAGE);
-                throw new JmriException("Hardware Address passed should be a number");
-            }
-            
-        } else {
-            // Entered in using the old format
-            try {
-                encoderAddress = Integer.parseInt(hwAddr);
-                channel = 0;
-            } catch (NumberFormatException ex) {
-                log.error("Unable to convert {} Hardware Address to a number", hwAddr);
-                throw new JmriException("Hardware Address passed should be a number");
-            }
-        }
-
-        curAddr = encoderAddress;
-        curCh = channel;
-        return currentSystemName(sysPrefix);
+        return sysPrefix + typeLetter() + hwAddr;
     }
-    
-    private String currentSystemPostfix() {
-        return curAddr + "_" + curCh;
-    }
-    
-    private String currentSystemName(String sysPrefix) {
-        return sysPrefix + typeLetter() + currentSystemPostfix();
-    }
-
-    private volatile int curAddr; 
-    private volatile int curCh;
 
     /**
      * Provide next valid address.
@@ -110,44 +72,59 @@ public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
      */
     @Override
     synchronized public String getNextValidAddress(String curAddress, String prefix) {
-
-        String tmpSName = "";
-
-        try {
-            tmpSName = createSystemName(curAddress, prefix);
-        } catch (JmriException ex) {
-            jmri.InstanceManager.getDefault(jmri.UserPreferencesManager.class).
-                    showErrorMessage(Bundle.getMessage("ErrorTitle"), Bundle.getMessage("ErrorConvertNumberX", curAddress), "" + ex, "", true, false);
+        
+        Pattern pp = Pattern.compile(".*?(\\d+).*?"); // greedy number and non-greedy pefix and suffix
+        Matcher matcher = pp.matcher(curAddress);
+        
+        if(!matcher.matches()) {
+            log.error("Unable to extract number from Hardware Address {}", curAddress);
+            jmri.InstanceManager
+                    .getDefault(jmri.UserPreferencesManager.class)
+                    .showErrorMessage(Bundle.getMessage("ErrorTitle"),
+                            Bundle.getMessage("ErrorConvertNumberX", curAddress), 
+                            "", "", true, false);
             return null;
         }
+        
+        int numAddr = Integer.parseInt(matcher.group(1));
+
+        Function<Integer,String> genAddr = (num)->new StringBuilder(curAddress)
+                .replace(matcher.start(1), matcher.end(1), Integer.toString(num))
+                .toString();
+        
+        
+        String tmpSName =  createSystemName(curAddress, prefix);
+        
         //Check to determine if the systemName is in use, return null if it is,
         //otherwise return the next valid address.
         Sensor s = getBySystemName(tmpSName);
-        if (s != null) {
-            for (int x = 1; x < 15; x++) {
-                curCh += 1;
-                tmpSName = currentSystemName(prefix);
-                s = getBySystemName(tmpSName);
-                if (s == null) {
-                    return currentSystemPostfix();
-                }
+        if(s==null) return curAddress;
+        
+
+        for (int x = 1; x < 15; x++) {
+            numAddr ++;
+            String tmpHwAddr = genAddr.apply(numAddr);
+            tmpSName = createSystemName(tmpHwAddr, prefix);
+            s = getBySystemName(tmpSName);
+            if (s == null) {
+                return tmpHwAddr;
             }
-            return null;
-        } else {
-            return currentSystemPostfix();
         }
+        
+        log.warn("Exhaused search of empty addresses");
+        return null;
+
     }
 
 
 
     /**
-     * Validate system name format.
-     *
-     * @return VALID if system name has a valid format, else returns INVALID
+     * Validate system name format. Mqtt address can be anything.
+     * @returns {@link NameValidity#VALID }
      */
     @Override
     public NameValidity validSystemNameFormat(String systemName) {
-        return NameValidity.VALID; //: NameValidity.INVALID;
+        return NameValidity.VALID; 
     }
 
     /**
