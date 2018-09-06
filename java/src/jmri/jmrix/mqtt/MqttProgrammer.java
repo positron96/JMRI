@@ -8,11 +8,9 @@ package jmri.jmrix.mqtt;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.swing.SwingUtilities;
 import jmri.AddressedProgrammer;
 import jmri.ProgListener;
 import jmri.ProgrammerException;
@@ -22,7 +20,23 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- *
+ * The programmer that works over MQTT.
+ * If can work in either ops mode or service mode.
+ * 
+ * <p>
+ * In addressed (ops) mode it performs the following communication over MQTT:
+ * <ul>
+ * <li>To write a CV: publishes CV value to topic <code>$pref/loco/$addr/CV/set</code>
+ * <li>To read CV: publishes empty packet to topic <code>$pref/loco/$addr/CV/set</code>
+ *  and waits for response on topic <code>$pref/loco/$addr/CV</code>
+ * <li>To verify CV: does the same as when reading.
+ * </ul>
+ * Here, $pref is appended by {@link MqttAdapter} and defaults to "rail" (can be 
+ * changed when creating the connection).
+ * 
+ * <p>
+ * In service mode, $addr is set to 0, all other logic is the same.
+ * 
  * @author positron
  */
 public class MqttProgrammer extends AbstractProgrammer 
