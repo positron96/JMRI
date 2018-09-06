@@ -8,9 +8,39 @@ import org.slf4j.LoggerFactory;
 /**
  * MQTT implementation of the Turnout interface.
  * <p>
- * Description: extend jmri.AbstractTurnout for MQTT layouts
+ * Description: extend jmri.AbstractTurnout for MQTT layouts.
+ * 
+ * <p>
+ * This class sends either "CLOSED"/"THROWN" or "0"/"1" messages over MQTT.
+ * This depends on provided address (in system name).
+ * If address contains "PAIR", the turnout is assumed to use two outputs and 
+ * messages "THROWN/CLOSED" are sent to decoder, letting the decoder to control 
+ * the outputs. Otherwise, the turnout is assumed to use single output 
+ * of the decoder and values "0"/"1" are sent. This mode is useful for operating
+ * signal heads and masts.
+ * 
+ * <p>
+ * Examples of addresses that can be entered when creating a turnout: 
+ * <ul>
+ * <li>"123" - means that this address only operates one output.
+ * <li>"123/1" - means 1st output of decoder 123.
+ * <li>"123/PAIR/2" - means second pair of decoder 123.
+ * </ul>
+ * 
+ * 
+ * It's up to decoder to interpret topic names as it pleases. It can listen to 
+ * topics "123", "124", "125", "126" to operate 4 outputs, or it can listen to topics
+ * "123/0", "123/1" etc to operate outputs.
+ * 
+ * <p>
+ * Topics are generated from addresses by prepending them with system prefix 
+ * (from {@link MqttAdapterTest}} that defaults to "rail" and accessory decoder 
+ * prefix that is "acc". So for address 123/PAIR/0, the MQTT topic will be
+ * "rail/acc/123/PAIR/0". Note the lack of leading slash.
+ * 
  *
  * @author Lionel Jeanson Copyright: Copyright (c) 2017
+ * @author positron, 2018
  */
 public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
 
@@ -28,7 +58,7 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
         super(systemName);
         mqttAdapter = ma;
         topic = "acc/" + hwAddr.toUpperCase();
-        isPair = hwAddr.toUpperCase().startsWith("PAIR");
+        isPair = hwAddr.toUpperCase().contains("PAIR");
         if (isPair) {
             closedText = PAIR_CLOSED;
             thrownText = PAIR_THROWN;
