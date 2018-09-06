@@ -12,11 +12,9 @@ import org.slf4j.LoggerFactory;
 /**
  * An implementation of DccThrottle with code specific to a DCC++ connection.
  *
- * @author Paul Bender (C) 2002-2010
- * @author Giorgio Terdina (C) 2007
- * @author Mark Underwood (C) 2015
- *
- * Based on XNetThrottle by Paul Bender and Giorgio Terdina
+ * @author positron, 2018
+ * 
+ * Based on DcppThrottle by Paul Bender, Giorgio Terdina and Mark Underwood
  */
 public class MqttThrottle extends AbstractThrottle implements MqttEventListener {
 

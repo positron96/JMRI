@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 /**
  *
  * @author lionel
+ * @author positron
  */
 public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implements MqttCallback {
 
