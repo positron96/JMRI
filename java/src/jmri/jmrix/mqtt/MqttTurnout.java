@@ -1,5 +1,6 @@
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import jmri.Turnout;
 import jmri.implementation.AbstractTurnout;
 import org.slf4j.Logger;

@@ -3,11 +3,11 @@
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-package jmri.jmrix.mqtt.configurexml;
+package jmri.jmrix.mqtt.networkdriver.configurexml;
 
 import jmri.jmrix.configurexml.AbstractNetworkConnectionConfigXml;
-import jmri.jmrix.mqtt.MqttAdapter;
-import jmri.jmrix.mqtt.MqttConnectionConfig;
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
+import jmri.jmrix.mqtt.networkdriver.MqttConnectionConfig;
 
 /**
  *

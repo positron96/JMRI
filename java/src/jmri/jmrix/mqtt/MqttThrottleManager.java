@@ -1,5 +1,6 @@
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import java.util.HashMap;
 import jmri.LocoAddress;
 import jmri.ThrottleManager;

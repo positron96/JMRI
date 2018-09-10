@@ -1,5 +1,6 @@
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import java.lang.reflect.Field;
 import jmri.DccLocoAddress;
 import jmri.DccThrottle;

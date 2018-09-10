@@ -1,6 +1,8 @@
 
-package jmri.jmrix.mqtt;
+package jmri.jmrix.mqtt.networkdriver;
 
+import jmri.jmrix.mqtt.MqttConnectionTypeList;
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -20,7 +22,7 @@ public class MqttConnectionConfig extends jmri.jmrix.AbstractNetworkConnectionCo
 
     @Override
     public String name() {
-        return("MQTT Connection");
+        return "Network Connection";
     }
 
     @Override
@@ -40,6 +42,23 @@ public class MqttConnectionConfig extends jmri.jmrix.AbstractNetworkConnectionCo
     public String getManufacturer() {
         return(MqttConnectionTypeList.GENMAN);
     }
+    
+    @Override
+    public boolean isAutoConfigPossible() {
+        return true;
+    }
+    
+    
 
     // private final static Logger log = LoggerFactory.getLogger(MqttConnectionConfig.class);    
+
+    @Override
+    protected void checkInitDone() {
+        super.checkInitDone();
+        
+        super.adNameField.setEnabled(true);
+        super.adNameFieldLabel.setEnabled(true);
+        //super.serviceTypeField.setEnabled(true);
+        //super.serviceTypeFieldLabel.setEnabled(true);
+    }
 }

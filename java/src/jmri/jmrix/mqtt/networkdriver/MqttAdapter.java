@@ -1,9 +1,15 @@
-package jmri.jmrix.mqtt;
+package jmri.jmrix.mqtt.networkdriver;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
+import jmri.jmrix.mqtt.MqttEventListener;
+import jmri.jmrix.mqtt.MqttSystemConnectionMemo;
+import jmri.util.zeroconf.ZeroConfClient;
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
@@ -45,7 +51,7 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
         mqttEventListeners = new HashMap<>();
         getSystemConnectionMemo().setMqttAdapter(this);
         getSystemConnectionMemo().configureManagers();
-        mqttClient.setCallback(this);
+        
     }
 
     @Override
@@ -56,6 +62,9 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
             String clientID = CLID + "-" + this.getUserName();
             mqttClient = new MqttClient(PROTOCOL + getCurrentPortName(), clientID);
             mqttClient.connect();
+            mqttClient.setCallback(this);
+            mqttClient.publish("log", ("JMRI Connected to MQTT server "+mqttClient.getServerURI()).getBytes(), 0, false );
+            
         } catch (MqttException ex) {
             throw new IOException("Can't create MQTT client", ex);
         }
@@ -65,6 +74,97 @@ public class MqttAdapter extends jmri.jmrix.AbstractNetworkPortController implem
     public MqttSystemConnectionMemo getSystemConnectionMemo() {
         return (MqttSystemConnectionMemo) super.getSystemConnectionMemo();
     }
+    
+    
+
+    private ZeroConfClient mDNSClient = null;
+    private static final String MDNS_SERVICE_TYPE = "_mqtt._tcp.local.";
+    private String mDNSadName;
+    
+    @Override
+    public void autoConfigure() {
+        log.info("Configuring MQTT interface via JmDNS");
+
+        log.debug("Listening for service: " + getServiceType() );
+        
+        if (mDNSClient == null) {
+            mDNSClient = new ZeroConfClient();
+            mDNSClient.startServiceListener(getServiceType() );
+        }
+        // leave the wait code below commented out for now.  It
+        // does not appear to be needed for proper ZeroConf discovery.
+        //try {
+        //  synchronized(mdnsClient){
+        //  // we may need to add a timeout here.
+        //  mdnsClient.wait(keepAliveTimeoutValue);
+        //  if(log.isDebugEnabled()) mdnsClient.listService(serviceType);
+        //  }
+        //} catch(java.lang.InterruptedException ie){
+        //  log.error("MDNS auto Configuration failed.");
+        //  return;
+        //}
+        try {
+            // if there is a hostname set, use the host name (which can
+            // be changed) to find the service.
+            String qualifiedHostName = m_HostName
+                + "." + "local.";
+            setHostAddress(mDNSClient
+                    .getServiceOnHost(getServiceType(), qualifiedHostName)
+                    .getHostAddresses()[0]
+            );
+        } catch (java.lang.NullPointerException npe) {
+            String ad = getAdvertisementName();
+            if (ad!=null && ad.length()>0) {
+                Optional<String> addr = mDNSClient.getServices( getServiceType() ).stream()
+                        .filter( si -> si.getQualifiedName().toLowerCase().contains(ad.toLowerCase()) )
+                        .map( si->si.getHostAddresses()[0])
+                        .findFirst();
+                if (addr.isPresent()) {
+                    setHostAddress( addr.get() );
+                    return;
+                } 
+            } else {
+                // if there is no hostname and ad set, just take the first.
+                log.debug("Taking first MDNS service");
+                setHostAddress(mDNSClient.getService(getServiceType()).getHostAddresses()[0]);
+            }
+        }
+    }
+    
+    private boolean mDNS=false;
+
+    @Override
+    public boolean getMdnsConfigure() {  return mDNS;   }
+    
+    @Override
+    public void setMdnsConfigure(boolean v) {  mDNS = v;    }
+
+    @Override
+    public String getAdvertisementName() {  return mDNSadName;  }
+
+    @Override
+    public void setAdvertisementName(String adName) { mDNSadName = adName; }
+
+    @Override
+    public String getServiceType() {  return MDNS_SERVICE_TYPE;  }
+
+    
+    
+    
+    @Override
+    public void dispose() {
+        mDNSClient = null;
+        List<MqttEventListener> ll = mqttEventListeners.values().stream()
+                .flatMap( l->l.stream() )
+                .distinct()
+                .collect( Collectors.toList() );
+        for(MqttEventListener mel: ll) {
+            unsubscribeAll(mel);
+        }
+    }
+    
+    
+    
 
     public void subscribe(String topic, MqttEventListener mel) {
         if (mqttEventListeners == null || mqttClient == null) {

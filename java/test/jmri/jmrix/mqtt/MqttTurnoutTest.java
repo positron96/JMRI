@@ -1,5 +1,6 @@
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import jmri.util.*;
 import org.junit.After;
 import org.junit.Assert;

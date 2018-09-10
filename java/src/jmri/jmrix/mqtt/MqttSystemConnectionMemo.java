@@ -1,5 +1,6 @@
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
 import java.util.ResourceBundle;
 import jmri.InstanceManager;
 import jmri.jmrix.SystemConnectionMemo;
@@ -117,7 +118,7 @@ public class MqttSystemConnectionMemo extends SystemConnectionMemo {
         return progManager;
     }
 
-    void setMqttAdapter(MqttAdapter ma) {
+    public void setMqttAdapter(MqttAdapter ma) {
         mqttAdapter = ma;
     }
     

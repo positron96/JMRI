@@ -5,6 +5,10 @@
  */
 package jmri.jmrix.mqtt;
 
+import jmri.jmrix.mqtt.networkdriver.MqttAdapter;
+import java.beans.PropertyChangeEvent;
+import java.beans.PropertyChangeListener;
+import java.beans.PropertyChangeListenerProxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -56,7 +60,7 @@ public class MqttProgrammer extends AbstractProgrammer
     
     private final Executor notifier = Executors.newSingleThreadExecutor();
     
-    private final Pattern listenTopicRegex = Pattern.compile("(?:.+/)??loco/(?<addr>\\d+)/CV/(?<cv>\\d+)");
+    private final Pattern listenTopicRegex = Pattern.compile("(?:.+/)??(?<mode>loco|acc)/(?<addr>\\d+)/CV/(?<cv>\\d+)");
     
     public MqttProgrammer(MqttAdapter mqtt) {
         addr = 0;
@@ -65,6 +69,9 @@ public class MqttProgrammer extends AbstractProgrammer
         this.mqtt = mqtt;
         listenTopic = "loco/+/CV/+";
         mqtt.subscribe(listenTopic, this);
+        this.addPropertyChangeListener( new PropertyChangeListenerProxy("Mode", (evt) -> {
+            log.debug("Mode changed from {} to {}", evt.getNewValue(), evt.getNewValue());
+        }));
     }
     
     public MqttProgrammer(int addr, boolean longAddr, MqttAdapter mqtt) {
@@ -78,9 +85,13 @@ public class MqttProgrammer extends AbstractProgrammer
 
     @Override
     public List<ProgrammingMode> getSupportedModes() {
-        return Arrays.asList(ProgrammingMode.DIRECTBYTEMODE );
+        return Arrays.asList(
+                ProgrammingMode.DIRECTBYTEMODE, 
+                ProgrammingMode.OPSACCBYTEMODE, 
+                ProgrammingMode.OPSACCEXTBYTEMODE,
+                ProgrammingMode.OPSBYTEMODE );
     }
-
+    
     @Override
     protected void timeout() {
         if(waiting) {
@@ -97,7 +108,13 @@ public class MqttProgrammer extends AbstractProgrammer
     
         
     private String pubTopic(int cv) {
-        return "loco/"+addr+"/CV/"+cv+"/set";
+        ProgrammingMode m =getMode();
+        if (m==ProgrammingMode.OPSACCEXTBYTEMODE || m==ProgrammingMode.OPSACCBYTEMODE) {
+            return "acc/"+addr+"/CV/"+cv+"/set";
+        } else {
+            return "loco/"+addr+"/CV/"+cv+"/set";
+        }
+
     }
     
     private void sendGetReq(int cv) {
@@ -149,16 +166,7 @@ public class MqttProgrammer extends AbstractProgrammer
         log.debug("confirmCV({}, {})", cv, val);
         
         readCV(Integer.parseInt(cv) , p);
-        
-             
-//        if(waiting) {
-//            p.programmingOpReply(0, ProgListener.ProgrammerBusy);
-//            return;
-//        }
-//        ll = p;
-//        sendGetReq(Integer.parseInt(cv) );
-//        cVal = val;
-//        restartTimer(5000);
+
     }
     
 

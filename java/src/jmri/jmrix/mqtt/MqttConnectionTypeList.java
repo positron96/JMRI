@@ -6,6 +6,7 @@
 package jmri.jmrix.mqtt;
 
 import jmri.jmrix.ConnectionTypeList;
+import jmri.jmrix.mqtt.networkdriver.MqttConnectionConfig;
 import org.openide.util.lookup.ServiceProvider;
 
 /**
@@ -20,7 +21,7 @@ public class MqttConnectionTypeList implements jmri.jmrix.ConnectionTypeList {
     @Override
     public String[] getAvailableProtocolClasses() {
         return new String[]{
-            "jmri.jmrix.mqtt.MqttConnectionConfig"
+            MqttConnectionConfig.class.getName()
         };    
     }
 
