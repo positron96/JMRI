@@ -103,7 +103,7 @@ public class MqttTurnout extends AbstractTurnout implements MqttEventListener {
     }
 
     private void sendMessage(String c) {
-        mqttAdapter.publish(topic, c.getBytes());
+        mqttAdapter.publish(topic, c.getBytes(), false);
     }
 
     @Override
