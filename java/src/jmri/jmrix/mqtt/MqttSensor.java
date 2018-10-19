@@ -30,7 +30,7 @@ public class MqttSensor extends AbstractSensor implements MqttEventListener {
         super(systemName);
         mqttAdapter = controller;
         
-        listenTopic = "acc/"+hwAddr;
+        listenTopic = "sensor/"+hwAddr;
         cmdTopic = listenTopic+"/get";
         mqttAdapter.subscribe(listenTopic, this);
         

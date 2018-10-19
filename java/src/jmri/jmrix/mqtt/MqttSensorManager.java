@@ -74,10 +74,10 @@ public class MqttSensorManager extends jmri.managers.AbstractSensorManager {
     @Override
     synchronized public String getNextValidAddress(String curAddress, String prefix) {
         
-        Pattern pp = Pattern.compile(".*?(\\d+).*?"); // greedy number and non-greedy pefix and suffix
+        Pattern pp = Pattern.compile("(\\d+)\\D*$"); // find last numbers
         Matcher matcher = pp.matcher(curAddress);
-        
-        if(!matcher.matches()) {
+         
+        if(!matcher.find()) {
             log.error("Unable to extract number from Hardware Address {}", curAddress);
             jmri.InstanceManager
                     .getDefault(jmri.UserPreferencesManager.class)
